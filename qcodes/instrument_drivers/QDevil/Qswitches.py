@@ -2,7 +2,7 @@ from QSwitch_elab import QSwitch
 from time import sleep as sleep_s
 import numpy as np
 from typing import (
-    Tuple, Sequence, Dict, Union, Optional, ArrayLike)
+    Tuple, Sequence, Dict, Union, Optional)
 import os
 import json
 
