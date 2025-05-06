@@ -1,4 +1,5 @@
 from QSwitch_elab import QSwitch
+from time import sleep as sleep_s
 import numpy as np
 from typing import (
     Tuple, Sequence, Dict, Union, Optional, ArrayLike)
@@ -17,12 +18,32 @@ class QSwitches():
         self.qswitches = qswitch
         # self.num_of_qswitches = len(qswitch)
         self._set_default_names(default_names)
+        self.locked_relays = []
 
 
 
     def reset(self) -> None:
         for qswitch in self.qswitches:
             qswitch.reset()
+
+
+    def soft_reset(self, force=False) -> None:
+        """ Resets the relays to the default state excluding the relays in self.lokced_relays
+            The check for locked relays prevents accidentally reseting e.g. a gate in the case that the kernel is restarted but the locked_relays parameter is not updated.
+        Args:
+            force (bool): If True, all relays are reset to the default state. Bypasses the check for locked relays.
+        """
+        if not self.locked_relays and not force:
+            raise ValueError("No relays are locked. Use force=True to reset all relays anyway.")
+        else:
+            for line in range(1, relay_lines+1):
+                if line not in self.locked_relays:
+                    for tap in range(1, relays_per_line+1):
+                        self.open_relay(line, tap)
+                    self.close_relay(line, 0)
+
+            sleep_s(0.6)
+            self.state_force_update()
 
 
     # -----------------------------------------------------------------------
@@ -58,7 +79,9 @@ class QSwitches():
     #             self.qswitches[0].open_relay(line, tap)
     #         else:
     #             self.qswitches[1].open_relay(line-26, tap)
-
+    def state_force_update(self) -> None:
+        for qswitch in self.qswitches:
+            qswitch._set_state_raw(self.ask('stat?'))
 
 
     def save_state(self, name: str) -> None:
@@ -198,7 +221,7 @@ class QSwitches():
         if default_names:
             lines = default_names
         else:
-            lines = np.concatenate((np.arange(1, relay_lines*len(self.qswitches))))
+            lines = np.arange(1, relay_lines*len(self.qswitches))
         taps = range(1, relays_per_line)
         self._line_names = dict(zip(map(str, lines), lines))
         self._tap_names = dict(zip(map(str, taps), taps))
